@@ -1,6 +1,12 @@
 "use client";
 
 import {
+  useEffect,
+  useRef,
+  type ReactNode,
+} from "react";
+import { Pause, Play, PanelRightClose, PanelRightOpen, RotateCcw } from "lucide-react";
+import {
   OPTIMAL_PHASE_ANGLE,
   SCENARIOS,
   SYNODIC_PERIOD_DAYS,
@@ -18,6 +24,19 @@ import {
   useSimulation,
   type SpeedPreset,
 } from "@/store/simulation";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 
 const SPEEDS: { value: SpeedPreset; label: string }[] = [
   { value: 10, label: "10×" },
@@ -27,11 +46,42 @@ const SPEEDS: { value: SpeedPreset; label: string }[] = [
   { value: 50, label: "50×" },
 ];
 
-/** Shared style so Hide / Show panel match exactly */
-const PANEL_TOGGLE_CLASS =
-  "pointer-events-auto absolute right-3 top-3 z-20 rounded-full border border-white/15 bg-slate-950/85 px-3 py-2 text-xs font-semibold text-slate-100 shadow-xl backdrop-blur-md transition hover:bg-slate-900/90 sm:right-5 sm:top-5";
+const SCENARIO_ACCENT: Record<string, string> = {
+  optimal: "border-emerald-400/50 bg-emerald-500/15 text-emerald-100",
+  "one-year-late": "border-rose-400/50 bg-rose-500/15 text-rose-100",
+  "free-run": "border-sky-400/50 bg-sky-500/15 text-sky-100",
+};
+
+function PanelCard({
+  title,
+  children,
+  className,
+}: {
+  title: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card
+      size="sm"
+      className={cn(
+        "shrink-0 overflow-visible border-0 bg-card/80 py-2.5 shadow-xl ring-1 ring-white/10 backdrop-blur-md",
+        className
+      )}
+    >
+      <CardHeader className="gap-0 pb-0 pt-0">
+        <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          {title}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="overflow-visible pt-1.5">{children}</CardContent>
+    </Card>
+  );
+}
 
 export function Controls() {
+  const scrollRef = useRef<HTMLElement>(null);
+
   const timeDays = useSimulation((s) => s.timeDays);
   const speed = useSimulation((s) => s.speed);
   const playing = useSimulation((s) => s.playing);
@@ -46,6 +96,23 @@ export function Controls() {
   const setShowPhaseAngle = useSimulation((s) => s.setShowPhaseAngle);
   const togglePanel = useSimulation((s) => s.togglePanel);
   const reset = useSimulation((s) => s.reset);
+
+  // Force wheel scrolling on the panel. OrbitControls / the canvas can otherwise
+  // swallow wheel events even when the pointer is over the overlay.
+  useEffect(() => {
+    if (!panelOpen) return;
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      el.scrollTop += e.deltaY;
+    };
+
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [panelOpen]);
 
   const scenario = getActiveScenario(scenarioId);
   const launchDay = getLaunchDay(scenarioId);
@@ -72,229 +139,274 @@ export function Controls() {
       : null;
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-10 p-3 sm:p-5">
-      {/* Same position + style whether open or closed */}
-      <button
+    <div className="pointer-events-none absolute inset-0 z-50">
+      <Button
         type="button"
+        variant="outline"
+        size="sm"
         onClick={togglePanel}
-        className={PANEL_TOGGLE_CLASS}
+        className="pointer-events-auto absolute right-3 top-3 z-20 rounded-full border-white/15 bg-card/85 px-3 shadow-xl backdrop-blur-md sm:right-5 sm:top-5"
         aria-label={panelOpen ? "Hide panel" : "Show panel"}
       >
-        {panelOpen ? "Hide ▶" : "◀ Show panel"}
-      </button>
+        {panelOpen ? (
+          <>
+            Hide
+            <PanelRightClose data-icon="inline-end" />
+          </>
+        ) : (
+          <>
+            <PanelRightOpen data-icon="inline-start" />
+            Show panel
+          </>
+        )}
+      </Button>
 
       {panelOpen && (
-        <aside className="pointer-events-auto absolute bottom-3 right-3 top-14 flex w-[min(100%,22rem)] flex-col gap-2.5 overflow-y-auto sm:bottom-5 sm:right-5 sm:top-16 sm:w-[22rem]">
-          {/* 1. Timeline */}
-          <section className="rounded-2xl border border-white/10 bg-slate-950/80 p-3 shadow-xl backdrop-blur-md">
-            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Timeline
-            </h2>
-            <div className="flex flex-col gap-1.5">
-              {SCENARIOS.map((s) => {
-                const active = s.id === scenarioId;
-                return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setScenario(s.id)}
-                    className={`rounded-xl border px-3 py-2 text-left transition ${
-                      active
-                        ? s.id === "optimal"
-                          ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-100"
-                          : s.id === "one-year-late"
-                            ? "border-rose-400/50 bg-rose-500/15 text-rose-100"
-                            : "border-sky-400/50 bg-sky-500/15 text-sky-100"
-                        : "border-white/10 bg-white/5 text-slate-300 hover:border-white/20 hover:bg-white/10"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium">{s.label}</span>
+        <aside
+          ref={scrollRef}
+          className="panel-scroll pointer-events-auto absolute right-3 top-14 w-[min(100%-1.5rem,22rem)] sm:right-5 sm:top-16 sm:w-[22rem]"
+          style={{
+            // Explicit height so overflow scrolling always has a bounded box
+            maxHeight: "calc(100dvh - 4.5rem)",
+            height: "calc(100dvh - 4.5rem)",
+            overflowY: "scroll",
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="flex flex-col gap-2 pb-4">
+            {/* Timeline */}
+            <PanelCard title="Timeline">
+              <div className="flex flex-col gap-1.5">
+                {SCENARIOS.map((s) => {
+                  const active = s.id === scenarioId;
+                  return (
+                    <Button
+                      key={s.id}
+                      type="button"
+                      variant="outline"
+                      onClick={() => setScenario(s.id)}
+                      className={cn(
+                        "h-auto min-h-9 w-full justify-between gap-2 rounded-xl px-3 py-2 text-left font-normal whitespace-normal",
+                        active
+                          ? SCENARIO_ACCENT[s.id]
+                          : "border-white/10 bg-white/5 text-muted-foreground hover:border-white/20 hover:bg-white/10 hover:text-foreground"
+                      )}
+                    >
+                      <span className="min-w-0 flex-1 text-sm leading-snug font-medium">
+                        {s.label}
+                      </span>
                       {s.id !== "free-run" && (
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                            s.succeeds
-                              ? "bg-emerald-500/20 text-emerald-300"
-                              : "bg-rose-500/20 text-rose-300"
-                          }`}
+                        <Badge
+                          variant={s.succeeds ? "secondary" : "destructive"}
+                          className={cn(
+                            "shrink-0 uppercase",
+                            s.succeeds &&
+                              "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/20"
+                          )}
                         >
                           {s.succeeds ? "hit" : "miss"}
-                        </span>
+                        </Badge>
                       )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+                    </Button>
+                  );
+                })}
+              </div>
+            </PanelCard>
 
-          {/* 2. Playback */}
-          <section className="rounded-2xl border border-white/10 bg-slate-950/80 p-3 shadow-xl backdrop-blur-md">
-            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Playback
-            </h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={togglePlaying}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-                aria-label={playing ? "Pause" : "Play"}
-              >
-                {playing ? (
-                  <span className="text-sm">❚❚</span>
-                ) : (
-                  <span className="ml-0.5 text-sm">▶</span>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={reset}
-                className="rounded-full border border-white/10 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-white/10"
-              >
-                Restart
-              </button>
-              <span className="text-[11px] text-slate-500">
-                {speed} sim-days / sec
-              </span>
-            </div>
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-              <span className="mr-0.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                Speed
-              </span>
-              {SPEEDS.map((s) => (
-                <button
-                  key={s.value}
+            {/* Playback */}
+            <PanelCard title="Playback">
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
                   type="button"
-                  onClick={() => setSpeed(s.value)}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
-                    speed === s.value
-                      ? "bg-amber-400 text-slate-950"
-                      : "bg-white/5 text-slate-300 hover:bg-white/10"
-                  }`}
+                  variant="secondary"
+                  size="icon"
+                  onClick={togglePlaying}
+                  className="rounded-full"
+                  aria-label={playing ? "Pause" : "Play"}
                 >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          </section>
+                  {playing ? <Pause /> : <Play />}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={reset}
+                  className="rounded-full border-white/10"
+                >
+                  <RotateCcw data-icon="inline-start" />
+                  Restart
+                </Button>
+                <span className="text-[11px] text-muted-foreground">
+                  {speed} sim-days / sec
+                </span>
+              </div>
 
-          {/* 3. Live telemetry */}
-          <section className="rounded-2xl border border-white/10 bg-slate-950/80 p-3 shadow-xl backdrop-blur-md">
-            <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Live telemetry
-            </h2>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-              <div>
-                <dt className="text-slate-500">Sim time</dt>
-                <dd className="font-mono text-slate-100">
-                  day {timeDays.toFixed(0)}
-                  <span className="ml-1 text-slate-500">
-                    ({formatDays(timeDays)})
-                  </span>
-                </dd>
+              <div className="mt-2.5 flex flex-col gap-1.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Speed
+                </span>
+                <ToggleGroup
+                  value={[String(speed)]}
+                  onValueChange={(values) => {
+                    const next = values[0];
+                    if (next) setSpeed(Number(next) as SpeedPreset);
+                  }}
+                  variant="outline"
+                  size="sm"
+                  className="flex w-full flex-wrap gap-1"
+                >
+                  {SPEEDS.map((s) => (
+                    <ToggleGroupItem
+                      key={s.value}
+                      value={String(s.value)}
+                      className="min-w-[2.75rem] flex-1 data-pressed:bg-primary data-pressed:text-primary-foreground data-pressed:hover:bg-primary/90"
+                    >
+                      {s.label}
+                    </ToggleGroupItem>
+                  ))}
+                </ToggleGroup>
               </div>
-              <div>
-                <dt className="text-slate-500">Mission</dt>
-                <dd className="font-mono capitalize text-slate-100">
-                  {missionPhase.replace("-", " ")}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Phase angle</dt>
-                <dd className="font-mono text-violet-300">
-                  {phaseDeg.toFixed(1)}°
-                  <span className="ml-1 text-slate-500">
-                    (opt {optimalPhaseDeg.toFixed(0)}°)
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-slate-500">Transfer</dt>
-                <dd className="font-mono text-amber-300">
-                  {Math.round(TRANSFER_DAYS)} days
-                </dd>
-              </div>
-              {launchDay !== null && (
-                <div className="col-span-2">
-                  <dt className="text-slate-500">Launch day</dt>
-                  <dd className="font-mono text-slate-100">
-                    t = {launchDay.toFixed(0)} days from optimal window
+            </PanelCard>
+
+            {/* Live telemetry */}
+            <PanelCard title="Live telemetry">
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Sim time</dt>
+                  <dd className="font-mono break-words text-foreground">
+                    day {timeDays.toFixed(0)}
+                    <span className="ml-1 text-muted-foreground">
+                      ({formatDays(timeDays)})
+                    </span>
                   </dd>
                 </div>
-              )}
-              {miss !== null && missionPhase === "missed" && (
-                <div className="col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5">
-                  <dt className="text-rose-300/80">Miss distance at arrival</dt>
-                  <dd className="font-mono text-sm text-rose-200">
-                    {formatAu(miss)} (~{(miss * 149.6).toFixed(0)} million km)
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Mission</dt>
+                  <dd className="font-mono capitalize text-foreground">
+                    {missionPhase.replace("-", " ")}
                   </dd>
                 </div>
-              )}
-              {missionPhase === "arrived" && (
-                <div className="col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5">
-                  <dd className="text-sm text-emerald-200">
-                    {scenario.outcome}
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Phase angle</dt>
+                  <dd className="font-mono break-words text-violet-300">
+                    {phaseDeg.toFixed(1)}°
+                    <span className="ml-1 text-muted-foreground">
+                      (opt {optimalPhaseDeg.toFixed(0)}°)
+                    </span>
                   </dd>
                 </div>
-              )}
-              {missionPhase === "missed" && (
-                <div className="col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5">
-                  <dd className="text-sm text-rose-200">{scenario.outcome}</dd>
+                <div className="min-w-0">
+                  <dt className="text-muted-foreground">Transfer</dt>
+                  <dd className="font-mono text-amber-300">
+                    {Math.round(TRANSFER_DAYS)} days
+                  </dd>
                 </div>
-              )}
-            </dl>
+                {launchDay !== null && (
+                  <div className="col-span-2 min-w-0">
+                    <dt className="text-muted-foreground">Launch day</dt>
+                    <dd className="font-mono break-words text-foreground">
+                      t = {launchDay.toFixed(0)} days from optimal window
+                    </dd>
+                  </div>
+                )}
+                {miss !== null && missionPhase === "missed" && (
+                  <div className="col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5">
+                    <dt className="text-rose-300/80">Miss distance at arrival</dt>
+                    <dd className="font-mono text-sm break-words text-rose-200">
+                      {formatAu(miss)} (~{(miss * 149.6).toFixed(0)} million km)
+                    </dd>
+                  </div>
+                )}
+                {missionPhase === "arrived" && (
+                  <div className="col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2 py-1.5">
+                    <dd className="text-sm leading-snug break-words text-emerald-200">
+                      {scenario.outcome}
+                    </dd>
+                  </div>
+                )}
+                {missionPhase === "missed" && (
+                  <div className="col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1.5">
+                    <dd className="text-sm leading-snug break-words text-rose-200">
+                      {scenario.outcome}
+                    </dd>
+                  </div>
+                )}
+              </dl>
 
-            <div className="mt-3 flex flex-wrap gap-3 border-t border-white/5 pt-3 text-xs text-slate-400">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={showPath}
-                  onChange={(e) => setShowPath(e.target.checked)}
-                  className="accent-amber-400"
-                />
-                Transfer path
-              </label>
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={showPhaseAngle}
-                  onChange={(e) => setShowPhaseAngle(e.target.checked)}
-                  className="accent-violet-400"
-                />
-                Phase angle
-              </label>
-            </div>
-          </section>
+              <Separator className="my-2.5 bg-white/10" />
 
-          {/* 4. Info */}
-          <section className="rounded-2xl border border-white/10 bg-slate-950/80 px-3.5 py-3 shadow-xl backdrop-blur-md">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
-              Orbital mechanics lab
-            </p>
-            <h1 className="mt-0.5 text-base font-semibold tracking-tight text-white sm:text-lg">
-              Earth → Mars launch windows
-            </h1>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-300">
-              You can only fly a cheap path to Mars when Earth and Mars line up.
-              That trip takes about {Math.round(TRANSFER_DAYS)} days. If Mars is
-              on the far side of the Sun, there is no straight route — you
-              cannot fly through the Sun. Launch a year late and the same rocket
-              misses Mars by hundreds of millions of km.
-            </p>
-            <p className="mt-2 border-t border-white/10 pt-2 text-xs leading-relaxed text-slate-400">
-              <strong className="text-slate-200">Why ~every 2 years?</strong>{" "}
-              Earth orbits faster than Mars. The time until they sit in the
-              right places again is the{" "}
-              <em className="text-slate-300 not-italic">synodic period</em>:{" "}
-              <span className="font-mono text-amber-200/90">
-                1 / (1/P<sub>E</sub> − 1/P<sub>M</sub>) ≈{" "}
-                {SYNODIC_PERIOD_DAYS.toFixed(0)} days
-              </span>{" "}
-              (~{formatDays(SYNODIC_PERIOD_DAYS)}, about 2.1 years). Wait only 1
-              year and Mars is still roughly on the wrong side of its orbit —
-              your transfer path ends empty.
-            </p>
-          </section>
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <Label
+                    htmlFor="show-path"
+                    className="cursor-pointer text-xs font-normal text-muted-foreground"
+                  >
+                    Transfer path
+                  </Label>
+                  <Switch
+                    id="show-path"
+                    size="sm"
+                    checked={showPath}
+                    onCheckedChange={setShowPath}
+                    className="data-checked:bg-amber-400"
+                  />
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Label
+                    htmlFor="show-phase"
+                    className="cursor-pointer text-xs font-normal text-muted-foreground"
+                  >
+                    Phase angle
+                  </Label>
+                  <Switch
+                    id="show-phase"
+                    size="sm"
+                    checked={showPhaseAngle}
+                    onCheckedChange={setShowPhaseAngle}
+                    className="data-checked:bg-violet-400"
+                  />
+                </div>
+              </div>
+            </PanelCard>
+
+            {/* Info */}
+            <Card
+              size="sm"
+              className="shrink-0 overflow-visible border-0 bg-card/80 py-2.5 shadow-xl ring-1 ring-white/10 backdrop-blur-md"
+            >
+              <CardHeader className="gap-0.5 pt-0">
+                <CardTitle className="text-base leading-snug font-semibold tracking-tight sm:text-lg">
+                  Earth → Mars launch windows
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 overflow-visible">
+                <p className="text-xs leading-relaxed break-words text-muted-foreground">
+                  You can only fly a cheap path to Mars when Earth and Mars line
+                  up. That trip takes about {Math.round(TRANSFER_DAYS)} days. If
+                  Mars is on the far side of the Sun, there is no straight route —
+                  you cannot fly through the Sun. Launch a year late and the same
+                  rocket misses Mars by hundreds of millions of km.
+                </p>
+                <Separator className="bg-white/10" />
+                <p className="text-xs leading-relaxed break-words text-muted-foreground">
+                  <strong className="text-foreground">Why ~every 2 years?</strong>{" "}
+                  Earth orbits faster than Mars. The time until they sit in the
+                  right places again is the{" "}
+                  <em className="not-italic text-foreground/80">
+                    synodic period
+                  </em>
+                  :{" "}
+                  <span className="font-mono text-amber-200/90">
+                    1 / (1/P<sub>E</sub> − 1/P<sub>M</sub>) ≈{" "}
+                    {SYNODIC_PERIOD_DAYS.toFixed(0)} days
+                  </span>{" "}
+                  (~{formatDays(SYNODIC_PERIOD_DAYS)}, about 2.1 years). Wait only
+                  1 year and Mars is still roughly on the wrong side of its orbit —
+                  your transfer path ends empty.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </aside>
       )}
     </div>
