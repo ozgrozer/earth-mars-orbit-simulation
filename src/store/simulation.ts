@@ -47,11 +47,17 @@ function scenarioById(id: ScenarioId) {
   return SCENARIOS.find((s) => s.id === id) ?? SCENARIOS[0];
 }
 
-/** Default start: a bit before launch so you see the approach */
+/** Days before launch to begin so the departure + whoosh SFX are visible */
+const PRE_LAUNCH_DAYS = 35;
+
+/**
+ * Default start: a little before launch so Starship ignition is on-screen.
+ * Optimal launches at t=0, so this uses negative sim-days (pre-window).
+ */
 function startTimeFor(id: ScenarioId): number {
   const s = scenarioById(id);
   if (id === "free-run") return 0;
-  return Math.max(0, s.launchOffsetDays - 40);
+  return s.launchOffsetDays - PRE_LAUNCH_DAYS;
 }
 
 export const useSimulation = create<SimulationState>((set, get) => ({
