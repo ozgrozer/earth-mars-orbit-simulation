@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { BackgroundMusic } from "./BackgroundMusic";
+import { LaunchSfx } from "./LaunchSfx";
 import { Controls } from "./ui/Controls";
 
 const SceneCanvas = dynamic(
@@ -21,6 +22,7 @@ export function SimulationApp() {
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-slate-950">
       <BackgroundMusic />
+      <LaunchSfx />
       <SceneCanvas />
       <Controls />
     </main>
