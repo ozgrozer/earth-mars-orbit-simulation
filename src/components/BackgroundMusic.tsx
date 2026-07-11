@@ -11,10 +11,12 @@ const VOLUME = 0.4;
  * Background score for the simulation.
  * - Plays continuously while `playing` is true
  * - Pauses only when the user hits Pause (not on Restart)
+ * - Mute silences audio without stopping the track position
  * - Attempts autoplay on load; if the browser blocks it, unlocks on first gesture
  */
 export function BackgroundMusic() {
   const playing = useSimulation((s) => s.playing);
+  const musicMuted = useSimulation((s) => s.musicMuted);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const unlockedRef = useRef(false);
 
@@ -24,6 +26,7 @@ export function BackgroundMusic() {
     audio.loop = true;
     audio.preload = "auto";
     audio.volume = VOLUME;
+    audio.muted = useSimulation.getState().musicMuted;
     audioRef.current = audio;
 
     return () => {
@@ -32,6 +35,13 @@ export function BackgroundMusic() {
       audioRef.current = null;
     };
   }, []);
+
+  // Mute / unmute without interrupting playback position
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.muted = musicMuted;
+  }, [musicMuted]);
 
   // Keep audio in sync with play/pause only — Restart leaves the track running
   useEffect(() => {
