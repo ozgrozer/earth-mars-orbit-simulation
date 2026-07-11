@@ -188,6 +188,8 @@ export function SolarSystem() {
         target={[0, 0, 0]}
         enableDamping
         dampingFactor={0.08}
+        // Only handle events that hit the canvas, not the HTML overlay
+        makeDefault
       />
     </>
   );

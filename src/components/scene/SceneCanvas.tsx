@@ -9,7 +9,7 @@ export function SceneCanvas() {
   const panelOpen = useSimulation((s) => s.panelOpen);
 
   return (
-    <div className="absolute inset-0 overflow-hidden">
+    <div className="absolute inset-0 z-0 overflow-hidden">
       {/* Shift solar system left when the right panel is open so it sits in the free space */}
       <div
         className={`absolute inset-0 transition-transform duration-300 ease-out ${
