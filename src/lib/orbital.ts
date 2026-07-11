@@ -175,6 +175,11 @@ export function missDistanceAu(launchDay: number): number {
 }
 
 export function formatDays(days: number): string {
+  if (days < 0) {
+    const d = Math.abs(days);
+    if (d < 1) return `T−${Math.round(d * 24)}h`;
+    return `T−${Math.round(d)} days`;
+  }
   if (days < 1) return `${Math.round(days * 24)} hours`;
   if (days < 60) return `${Math.round(days)} days`;
   const years = days / EARTH_YEAR_DAYS;
