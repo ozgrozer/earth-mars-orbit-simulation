@@ -370,16 +370,8 @@ export function Controls() {
             </PanelCard>
 
             {/* Info */}
-            <Card
-              size="sm"
-              className="shrink-0 overflow-visible border-0 bg-card/80 py-2.5 shadow-xl ring-1 ring-white/10 backdrop-blur-md"
-            >
-              <CardHeader className="gap-0.5 pt-0">
-                <CardTitle className="text-base leading-snug font-semibold tracking-tight sm:text-lg">
-                  Earth → Mars launch windows
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 overflow-visible">
+            <PanelCard title="Earth → Mars launch windows">
+              <div className="space-y-2">
                 <p className="text-xs leading-relaxed break-words text-muted-foreground">
                   You can only fly a cheap path to Mars when Earth and Mars line
                   up. That trip takes about {Math.round(TRANSFER_DAYS)} days. If
@@ -404,8 +396,8 @@ export function Controls() {
                   1 year and Mars is still roughly on the wrong side of its orbit —
                   your transfer path ends empty.
                 </p>
-              </CardContent>
-            </Card>
+              </div>
+            </PanelCard>
           </div>
         </aside>
       )}
