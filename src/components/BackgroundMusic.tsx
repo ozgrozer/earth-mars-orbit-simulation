@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useSimulation } from "@/store/simulation";
 
-const TRACK_SRC = "/red-dust-transit.mp3";
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+const TRACK_SRC = `${basePath}/red-dust-transit.mp3`;
 const VOLUME = 0.4;
 
 /**
