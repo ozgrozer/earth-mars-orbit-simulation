@@ -5,7 +5,15 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { Pause, Play, PanelRightClose, PanelRightOpen, RotateCcw } from "lucide-react";
+import {
+  Pause,
+  Play,
+  PanelRightClose,
+  PanelRightOpen,
+  RotateCcw,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import {
   OPTIMAL_PHASE_ANGLE,
   SCENARIOS,
@@ -54,10 +62,12 @@ const SCENARIO_ACCENT: Record<string, string> = {
 
 function PanelCard({
   title,
+  action,
   children,
   className,
 }: {
   title: string;
+  action?: ReactNode;
   children: ReactNode;
   className?: string;
 }) {
@@ -70,9 +80,12 @@ function PanelCard({
       )}
     >
       <CardHeader className="gap-0 pb-0 pt-0">
-        <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          {title}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            {title}
+          </CardTitle>
+          {action}
+        </div>
       </CardHeader>
       <CardContent className="overflow-visible pt-1.5">{children}</CardContent>
     </Card>
@@ -89,12 +102,14 @@ export function Controls() {
   const showPath = useSimulation((s) => s.showPath);
   const showPhaseAngle = useSimulation((s) => s.showPhaseAngle);
   const panelOpen = useSimulation((s) => s.panelOpen);
+  const musicMuted = useSimulation((s) => s.musicMuted);
   const setSpeed = useSimulation((s) => s.setSpeed);
   const togglePlaying = useSimulation((s) => s.togglePlaying);
   const setScenario = useSimulation((s) => s.setScenario);
   const setShowPath = useSimulation((s) => s.setShowPath);
   const setShowPhaseAngle = useSimulation((s) => s.setShowPhaseAngle);
   const togglePanel = useSimulation((s) => s.togglePanel);
+  const toggleMusicMuted = useSimulation((s) => s.toggleMusicMuted);
   const reset = useSimulation((s) => s.reset);
 
   // Force wheel scrolling on the panel. OrbitControls / the canvas can otherwise
@@ -175,7 +190,19 @@ export function Controls() {
         >
           <div className="flex flex-col gap-2 pb-4">
             {/* Timeline */}
-            <PanelCard title="Timeline">
+            <PanelCard
+              title="Timeline"
+              action={
+                <a
+                  href="https://grape.cool"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] font-medium normal-case tracking-normal text-muted-foreground transition hover:border-white/20 hover:bg-white/10 hover:text-foreground"
+                >
+                  🍇 grape.cool
+                </a>
+              }
+            >
               <div className="flex flex-col gap-1.5">
                 {SCENARIOS.map((s) => {
                   const active = s.id === scenarioId;
@@ -235,6 +262,17 @@ export function Controls() {
                 >
                   <RotateCcw data-icon="inline-start" />
                   Restart
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleMusicMuted}
+                  className="rounded-full border-white/10"
+                  aria-label={musicMuted ? "Unmute music" : "Mute music"}
+                  aria-pressed={musicMuted}
+                >
+                  {musicMuted ? <VolumeX /> : <Volume2 />}
                 </Button>
                 <span className="text-[11px] text-muted-foreground">
                   {speed} sim-days / sec
