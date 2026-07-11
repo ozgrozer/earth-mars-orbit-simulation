@@ -25,6 +25,8 @@ interface SimulationState {
   showPhaseAngle: boolean;
   /** Right-hand UI panel visibility */
   panelOpen: boolean;
+  /** Background music muted (animation can still play) */
+  musicMuted: boolean;
 
   setTimeDays: (t: number) => void;
   setSpeed: (s: SpeedPreset) => void;
@@ -35,6 +37,8 @@ interface SimulationState {
   setShowPhaseAngle: (v: boolean) => void;
   setPanelOpen: (v: boolean) => void;
   togglePanel: () => void;
+  setMusicMuted: (muted: boolean) => void;
+  toggleMusicMuted: () => void;
   reset: () => void;
   tick: (dtSeconds: number) => void;
 }
@@ -58,6 +62,7 @@ export const useSimulation = create<SimulationState>((set, get) => ({
   showPath: true,
   showPhaseAngle: true,
   panelOpen: true,
+  musicMuted: false,
 
   setTimeDays: (timeDays) => set({ timeDays }),
   setSpeed: (speed) => set({ speed }),
@@ -73,6 +78,8 @@ export const useSimulation = create<SimulationState>((set, get) => ({
   setShowPhaseAngle: (showPhaseAngle) => set({ showPhaseAngle }),
   setPanelOpen: (panelOpen) => set({ panelOpen }),
   togglePanel: () => set((s) => ({ panelOpen: !s.panelOpen })),
+  setMusicMuted: (musicMuted) => set({ musicMuted }),
+  toggleMusicMuted: () => set((s) => ({ musicMuted: !s.musicMuted })),
   reset: () => {
     const { scenarioId } = get();
     set({ timeDays: startTimeFor(scenarioId), playing: true });
