@@ -52,7 +52,7 @@ function startTimeFor(id: ScenarioId): number {
 
 export const useSimulation = create<SimulationState>((set, get) => ({
   timeDays: startTimeFor("optimal"),
-  speed: 30,
+  speed: 10,
   playing: true,
   scenarioId: "optimal",
   showPath: true,
